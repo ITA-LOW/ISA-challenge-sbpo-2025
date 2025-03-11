@@ -2,7 +2,10 @@ package org.sbpo2025.challenge;
 
 import org.apache.commons.lang3.time.StopWatch;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,8 +30,48 @@ public class ChallengeSolver {
     }
 
     public ChallengeSolution solve(StopWatch stopWatch) {
-        // Implement your solution here
-        return null;
+        Set<Integer> selectedOrders = new HashSet<>();
+        Set<Integer> visitedAisles = new HashSet<>();
+
+        int totalUnits = 0;
+        int[] aisleItemCount = new int[aisles.size()];
+
+        List<Integer> orderIndices = new ArrayList<>();
+        for (int i = 0; i < orders.size(); i++) {
+            orderIndices.add(i);
+        }
+        Collections.shuffle(orderIndices);
+
+        for (int i : orderIndices) {
+            if (selectedOrders.contains(i)) continue;
+
+            int potentialUnits = 0;
+            Set<Integer> requiredAisles = new HashSet<>();
+            for (Map.Entry<Integer, Integer> entry : orders.get(i).entrySet()) {
+                int item = entry.getKey();
+                int quantity = entry.getValue();
+
+                for (int j = 0; j < aisles.size(); j++) {
+                    if (aisles.get(j).getOrDefault(item, 0) >= quantity) {
+                        requiredAisles.add(j);
+                        potentialUnits += quantity;
+                        break;
+                    }
+                }
+            }
+
+            if (totalUnits + potentialUnits <= waveSizeUB) {
+                selectedOrders.add(i);
+                visitedAisles.addAll(requiredAisles);
+                totalUnits += potentialUnits;
+                for (int j : requiredAisles) {
+                    aisleItemCount[j] += 1;
+                }
+            }
+            if (totalUnits >= waveSizeLB) break;
+        }
+
+        return new ChallengeSolution(selectedOrders, visitedAisles);
     }
 
     /*
