@@ -30,48 +30,70 @@ public class ChallengeSolver {
     }
 
     public ChallengeSolution solve(StopWatch stopWatch) {
+        // Conjuntos para armazenar os pedidos e corredores selecionados
         Set<Integer> selectedOrders = new HashSet<>();
         Set<Integer> visitedAisles = new HashSet<>();
-
+        
         int totalUnits = 0;
-        int[] aisleItemCount = new int[aisles.size()];
-
+        
+        // Cria uma lista de índices dos pedidos
         List<Integer> orderIndices = new ArrayList<>();
         for (int i = 0; i < orders.size(); i++) {
             orderIndices.add(i);
         }
-        Collections.shuffle(orderIndices);
-
+        // Ordena os pedidos de forma decrescente com base no total de itens do pedido
+        orderIndices.sort((a, b) -> Integer.compare(getTotalItems(orders.get(b)), getTotalItems(orders.get(a))));
+        
+        // Itera pelos pedidos ordenados
         for (int i : orderIndices) {
-            if (selectedOrders.contains(i)) continue;
-
+            // Calcula quantos itens o pedido "i" tem e quais corredores (aisles) podem atendê-lo
             int potentialUnits = 0;
             Set<Integer> requiredAisles = new HashSet<>();
+            
             for (Map.Entry<Integer, Integer> entry : orders.get(i).entrySet()) {
                 int item = entry.getKey();
                 int quantity = entry.getValue();
-
+                
+                // Procura um corredor que tenha estoque suficiente para esse item
                 for (int j = 0; j < aisles.size(); j++) {
                     if (aisles.get(j).getOrDefault(item, 0) >= quantity) {
                         requiredAisles.add(j);
                         potentialUnits += quantity;
-                        break;
+                        break; // Para esse item, já encontrou um corredor adequado
                     }
                 }
             }
-
-            if (totalUnits + potentialUnits <= waveSizeUB) {
-                selectedOrders.add(i);
-                visitedAisles.addAll(requiredAisles);
-                totalUnits += potentialUnits;
-                for (int j : requiredAisles) {
-                    aisleItemCount[j] += 1;
-                }
+            
+            // Se a adição desse pedido ultrapassar o limite superior, não o adiciona
+            if (totalUnits + potentialUnits > waveSizeUB) {
+                continue;
             }
-            if (totalUnits >= waveSizeLB) break;
+            
+            // Adiciona o pedido e os corredores necessários
+            selectedOrders.add(i);
+            visitedAisles.addAll(requiredAisles);
+            totalUnits += potentialUnits;
+            
+            // Se atingirmos ou excedermos o limite inferior, encerramos a seleção
+            if (totalUnits >= waveSizeLB) {
+                break;
+            }
         }
-
+        
+        // Se, ao final, o total não for suficiente (menor que LB), a solução é inviável
+        if (totalUnits < waveSizeLB) {
+            return null;
+        }
+        
+        // Retorna a solução onde:
+        // - selectedOrders: pedidos que garantem que o total de itens está entre LB e UB.
+        // - visitedAisles: corredores que foram efetivamente necessários para atender esses pedidos.
         return new ChallengeSolution(selectedOrders, visitedAisles);
+    }
+    
+    // Método auxiliar para calcular o total de itens de um pedido
+    private int getTotalItems(Map<Integer, Integer> order) {
+        return order.values().stream().mapToInt(Integer::intValue).sum();
     }
 
     /*

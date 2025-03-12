@@ -1,0 +1,56 @@
+[Início]
+   │
+   ▼
+[Inicializa selectedOrders, visitedAisles e totalUnits = 0]
+   │
+   ▼
+[Cria lista orderIndices com índices dos pedidos]
+   │
+   ▼
+[Ordena orderIndices por total de itens (maior para menor)]
+   │
+   ▼
+[Para cada pedido i em orderIndices:]
+   │
+   ├──► [Se i já está em selectedOrders?] -- Sim --> [Pula para o próximo]
+   │
+   ▼
+[Calcula potentialUnits e requiredAisles para o pedido i]
+   │
+   ▼
+[Para cada item do pedido i:]
+   │
+   ▼
+[Procura um corredor que tenha estoque suficiente]
+   │
+   ▼
+[Se encontrar, adiciona o corredor em requiredAisles e incrementa potentialUnits]
+   │
+   ▼
+[Após verificar todos os itens do pedido i]
+   │
+   ▼
+[Se totalUnits + potentialUnits > waveSizeUB?]
+   │         │
+   │         └─ Sim: [Pula esse pedido]
+   │
+   ▼
+[Adiciona o pedido i a selectedOrders, e os corredores em requiredAisles a visitedAisles]
+   │
+   ▼
+[Atualiza totalUnits = totalUnits + potentialUnits]
+   │
+   ▼
+[Se totalUnits >= waveSizeLB, encerra o loop]
+   │
+   ▼
+[Fim do loop]
+   │
+   ▼
+[Se totalUnits < waveSizeLB, retorna solução inviável (null)]
+   │
+   ▼
+[Retorna a solução com selectedOrders e visitedAisles]
+   │
+   ▼
+[Fim]
