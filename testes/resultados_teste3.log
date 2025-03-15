@@ -1,0 +1,67 @@
+Verificando instance_0001.txt...
+Is solution feasible: True
+Objective function value: 8.0
+-----------------------------
+Verificando instance_0002.txt...
+Is solution feasible: True
+Objective function value: 2.0
+-----------------------------
+Verificando instance_0003.txt...
+Is solution feasible: True
+Objective function value: 4.7272727272727275
+-----------------------------
+Verificando instance_0004.txt...
+Is solution feasible: True
+Objective function value: 2.3333333333333335
+-----------------------------
+Verificando instance_0005.txt...
+Is solution feasible: False
+-----------------------------
+Verificando instance_0006.txt...
+Is solution feasible: False
+-----------------------------
+Verificando instance_0007.txt...
+Is solution feasible: False
+-----------------------------
+Verificando instance_0008.txt...
+Is solution feasible: False
+-----------------------------
+Verificando instance_0009.txt...
+Is solution feasible: True
+Objective function value: 3.2941176470588234
+-----------------------------
+Verificando instance_0010.txt...
+Is solution feasible: False
+-----------------------------
+Verificando instance_0011.txt...
+Is solution feasible: False
+-----------------------------
+Verificando instance_0012.txt...
+Is solution feasible: False
+-----------------------------
+Verificando instance_0013.txt...
+Is solution feasible: False
+-----------------------------
+Verificando instance_0014.txt...
+Is solution feasible: False
+-----------------------------
+Verificando instance_0015.txt...
+Is solution feasible: False
+-----------------------------
+Verificando instance_0016.txt...
+Is solution feasible: True
+Objective function value: 10.0
+-----------------------------
+Verificando instance_0017.txt...
+Is solution feasible: True
+Objective function value: 4.578947368421052
+-----------------------------
+Verificando instance_0018.txt...
+Is solution feasible: False
+-----------------------------
+Verificando instance_0019.txt...
+Is solution feasible: False
+-----------------------------
+Verificando instance_0020.txt...
+Is solution feasible: False
+-----------------------------

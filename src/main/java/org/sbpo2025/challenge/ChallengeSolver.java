@@ -2,14 +2,8 @@ package org.sbpo2025.challenge;
 
 import org.apache.commons.lang3.time.StopWatch;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 
 public class ChallengeSolver {
     private final long MAX_RUNTIME = 600000; // milliseconds; 10 minutes
@@ -20,125 +14,262 @@ public class ChallengeSolver {
     protected int waveSizeLB;
     protected int waveSizeUB;
 
-    public ChallengeSolver(
-            List<Map<Integer, Integer>> orders, List<Map<Integer, Integer>> aisles, int nItems, int waveSizeLB, int waveSizeUB) {
-        this.orders = orders;
-        this.aisles = aisles;
-        this.nItems = nItems;
-        this.waveSizeLB = waveSizeLB;
-        this.waveSizeUB = waveSizeUB;
-    }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public ChallengeSolution solve(StopWatch stopWatch) {
-        // Conjuntos para armazenar os pedidos e corredores selecionados
-        Set<Integer> selectedOrders = new HashSet<>();
-        Set<Integer> visitedAisles = new HashSet<>();
-        int totalUnits = 0;
-        
-        // Lista de todos os índices de pedidos (candidatos)
-        List<Integer> candidateOrders = new ArrayList<>();
-        for (int i = 0; i < orders.size(); i++) {
-            candidateOrders.add(i);
-        }
-        
-        boolean orderAdded = true;
-        // Enquanto houver algum pedido que possamos adicionar
-        while (orderAdded) {
-            orderAdded = false;
-            double bestRatio = -1.0;
-            int bestOrder = -1;
-            Set<Integer> bestNewAisles = new HashSet<>();
-            int bestPotentialUnits = 0;
-            
-            // Itera sobre os pedidos candidatos
-            for (int i : candidateOrders) {
-                // Se o pedido já foi selecionado, pula
-                if (selectedOrders.contains(i)) continue;
-                
-                int potentialUnits = 0;
-                Set<Integer> requiredNewAisles = new HashSet<>();
-                boolean canSatisfy = true;
-                
-                // Para cada item do pedido
-                for (Map.Entry<Integer, Integer> entry : orders.get(i).entrySet()) {
-                    int item = entry.getKey();
-                    int quantity = entry.getValue();
-                    boolean satisfied = false;
-                    
-                    // Primeiro, verifica se algum corredor já visitado pode suprir o item
-                    for (int a : visitedAisles) {
-                        if (aisles.get(a).getOrDefault(item, 0) >= quantity) {
-                            satisfied = true;
-                            break;
-                        }
-                    }
-                    
-                    // Se não for satisfeito pelos corredores já visitados, procura um novo corredor
-                    if (!satisfied) {
-                        for (int j = 0; j < aisles.size(); j++) {
-                            // Se o corredor já foi visitado, já foi verificado
-                            if (visitedAisles.contains(j)) continue;
-                            if (aisles.get(j).getOrDefault(item, 0) >= quantity) {
-                                requiredNewAisles.add(j);
-                                satisfied = true;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    // Se não houver nenhum corredor (novo ou já visitado) que forneça o item, o pedido não pode ser satisfeito
-                    if (!satisfied) {
-                        canSatisfy = false;
-                        break;
-                    } else {
-                        potentialUnits += quantity;
-                    }
-                } // Fim de cada item do pedido
-                
-                if (!canSatisfy) {
-                    continue; // Pula para o próximo pedido
-                }
-                
-                // Verifica se a adição desse pedido ultrapassaria o limite superior
-                if (totalUnits + potentialUnits > waveSizeUB) {
-                    continue;
-                }
-                
-                // Calcula a razão: quantos itens adiciona por corredor novo necessário
-                double ratio = potentialUnits / (requiredNewAisles.size() + 1e-6); // Adiciona um pequeno valor para evitar divisão por zero
-                
-                // Escolhe o pedido com a melhor razão
-                if (ratio > bestRatio) {
-                    bestRatio = ratio;
-                    bestOrder = i;
-                    bestNewAisles = requiredNewAisles;
-                    bestPotentialUnits = potentialUnits;
-                }
-            } // Fim da iteração dos candidatos
-            
-            // Se encontramos um pedido que melhora a solução
-            if (bestOrder != -1) {
-                selectedOrders.add(bestOrder);
-                // Adiciona os corredores novos necessários para esse pedido
-                visitedAisles.addAll(bestNewAisles);
-                totalUnits += bestPotentialUnits;
-                orderAdded = true;
-            }
-        } // Fim do while
-        
-        // Se, ao final, o total de itens não alcançou o limite inferior, a solução é inválida
-        if (totalUnits < waveSizeLB) {
-            return null;
-        }
-        
-        // Retorna a solução com os pedidos selecionados e os corredores visitados
-        return new ChallengeSolution(selectedOrders, visitedAisles);
+public ChallengeSolver(List<Map<Integer, Integer>> orders, List<Map<Integer, Integer>> aisles, int nItems, int waveSizeLB, int waveSizeUB) {
+    this.orders = orders;
+    this.aisles = aisles;
+    this.nItems = nItems;
+    this.waveSizeLB = waveSizeLB;
+    this.waveSizeUB = waveSizeUB;
+}
+
+
+public ChallengeSolution solve(StopWatch stopWatch) {
+    // Parâmetros do algoritmo genético
+    final int populationSize = 100;
+    final int generations = 100;
+    final double crossoverRate = 0.8;
+    final double mutationRate = 0.05;
+    final int nOrders = orders.size();
+    
+    // Cria a população inicial (cada indivíduo é um vetor booleano que indica se o pedido está selecionado)
+    List<Individual> population = new ArrayList<>();
+    for (int i = 0; i < populationSize; i++) {
+        Individual ind = new Individual(nOrders);
+        ind.randomize();
+        population.add(ind);
     }
     
-    // Método auxiliar para calcular o total de itens de um pedido
-    //private int getTotalItems(Map<Integer, Integer> order) {
-    //    return order.values().stream().mapToInt(Integer::intValue).sum();
-    //}
+    // Avalia a população em paralelo (usando 8 threads, se desejado; aqui a versão sem paralelismo é utilizada)
+    evaluatePopulation(population);
+    
+    // Evolução por um número de gerações
+    for (int gen = 0; gen < generations; gen++) {
+        List<Individual> newPopulation = new ArrayList<>();
+        // Elitismo: preserva o melhor indivíduo
+        Individual best = selectBestIndividual(population);
+        newPopulation.add(best.copy());
+        
+        // Gera nova população via seleção, crossover e mutação
+        while (newPopulation.size() < populationSize) {
+            Individual parent1 = tournamentSelection(population);
+            Individual parent2 = tournamentSelection(population);
+            Individual child;
+            if (Math.random() < crossoverRate) {
+                child = crossover(parent1, parent2);
+            } else {
+                child = parent1.copy();
+            }
+            mutate(child, mutationRate);
+            repair(child); // Tenta ajustar o indivíduo para melhorar a viabilidade
+            newPopulation.add(child);
+        }
+        population = newPopulation;
+        evaluatePopulation(population);
+    }
+    
+    // Seleciona o melhor indivíduo viável da população.
+    // Se nenhum indivíduo viável (fitness >= 0) for encontrado, usa o melhor indivíduo disponível e aplica repair.
+    Individual bestFeasible = selectBestFeasible(population);
+    if (bestFeasible == null) {
+        bestFeasible = selectBestIndividual(population);
+        repair(bestFeasible);
+        System.out.println("Warning: Nenhum indivíduo viável encontrado. Usando o melhor indivíduo disponível.");
+    }
+    
+    // Converte o melhor indivíduo em uma ChallengeSolution:
+    Set<Integer> solOrders = new HashSet<>();
+    for (int i = 0; i < nOrders; i++) {
+        if (bestFeasible.genotype[i]) {
+            solOrders.add(i);
+        }
+    }
+    // Deriva os corredores visitados: para cada pedido selecionado, inclui o primeiro corredor que forneça cada item
+    Set<Integer> solAisles = new HashSet<>();
+    for (int orderIdx : solOrders) {
+        for (Integer item : orders.get(orderIdx).keySet()) {
+            int quantity = orders.get(orderIdx).get(item);
+            for (int a = 0; a < aisles.size(); a++) {
+                if (aisles.get(a).getOrDefault(item, 0) >= quantity) {
+                    solAisles.add(a);
+                    break;
+                }
+            }
+        }
+    }
+    
+    ChallengeSolution solution = new ChallengeSolution(solOrders, solAisles);
+    if (!isSolutionFeasible(solution)) {
+        System.out.println("Warning: A solução gerada não atende completamente os critérios de viabilidade. Retornando solução mesmo assim.");
+    }
+    return solution;
+}
+
+/* 
+ * Classe interna para representar um indivíduo da população.
+ * Cada indivíduo possui um vetor booleano "genotype" de tamanho nOrders
+ * e um valor de fitness (maior é melhor).
+ */
+private class Individual {
+    boolean[] genotype;
+    double fitness;
+    
+    Individual(int n) {
+        genotype = new boolean[n];
+        fitness = -Double.MAX_VALUE;
+    }
+    
+    // Inicializa aleatoriamente o vetor com 0s e 1s
+    void randomize() {
+        Random rand = new Random();
+        for (int i = 0; i < genotype.length; i++) {
+            genotype[i] = rand.nextBoolean();
+        }
+    }
+    
+    // Cria uma cópia do indivíduo
+    Individual copy() {
+        Individual clone = new Individual(genotype.length);
+        System.arraycopy(this.genotype, 0, clone.genotype, 0, genotype.length);
+        clone.fitness = this.fitness;
+        return clone;
+    }
+}
+
+// Avalia a população (versão sem paralelismo)
+private void evaluatePopulation(List<Individual> population) {
+    for (Individual ind : population) {
+        ind.fitness = evaluateIndividual(ind);
+    }
+}
+
+/*
+ * Função que avalia um indivíduo.
+ * Converte o genotype em conjuntos de pedidos e derivam os corredores.
+ * Se a solução for inviável (por exemplo, total de unidades fora dos limites ou falta de estoque),
+ * retorna um valor de fitness negativo; caso contrário, retorna a razão total de itens / número de corredores.
+ */
+private double evaluateIndividual(Individual ind) {
+    Set<Integer> selOrders = new HashSet<>();
+    for (int i = 0; i < ind.genotype.length; i++) {
+        if (ind.genotype[i]) {
+            selOrders.add(i);
+        }
+    }
+    int totalUnitsPicked = 0;
+    for (int order : selOrders) {
+        totalUnitsPicked += orders.get(order).values().stream().mapToInt(Integer::intValue).sum();
+    }
+    // Deriva os corredores visitados (primeiro corredor que supre cada item de cada pedido)
+    Set<Integer> selAisles = new HashSet<>();
+    for (int order : selOrders) {
+        for (Map.Entry<Integer, Integer> entry : orders.get(order).entrySet()) {
+            int item = entry.getKey();
+            int qty = entry.getValue();
+            for (int a = 0; a < aisles.size(); a++) {
+                if (aisles.get(a).getOrDefault(item, 0) >= qty) {
+                    selAisles.add(a);
+                    break;
+                }
+            }
+        }
+    }
+    // Verifica as restrições:
+    if (totalUnitsPicked < waveSizeLB || totalUnitsPicked > waveSizeUB) {
+        return -1e6; // Penaliza fortemente soluções com total fora dos limites
+    }
+    // Verifica disponibilidade: para cada item, a soma das demandas deve ser <= soma dos estoques nos corredores selecionados.
+    for (int order : selOrders) {
+        for (Map.Entry<Integer, Integer> entry : orders.get(order).entrySet()) {
+            int item = entry.getKey();
+            int demand = entry.getValue();
+            int available = 0;
+            for (int a : selAisles) {
+                available += aisles.get(a).getOrDefault(item, 0);
+            }
+            if (demand > available) {
+                return -1e6;
+            }
+        }
+    }
+    // Se viável, retorna a razão (fitness) = totalUnitsPicked / (número de corredores usados)
+    if (selAisles.isEmpty()) return -1e6;
+    return (double) totalUnitsPicked / selAisles.size();
+}
+
+// Seleção por torneio: seleciona um indivíduo dentre um grupo aleatório de 3
+private Individual tournamentSelection(List<Individual> population) {
+    Random rand = new Random();
+    Individual best = null;
+    for (int i = 0; i < 3; i++) {
+        Individual ind = population.get(rand.nextInt(population.size()));
+        if (best == null || ind.fitness > best.fitness) {
+            best = ind;
+        }
+    }
+    return best;
+}
+
+// Crossover de um ponto (ou uniforme) entre dois pais
+private Individual crossover(Individual parent1, Individual parent2) {
+    int n = parent1.genotype.length;
+    Individual child = new Individual(n);
+    Random rand = new Random();
+    for (int i = 0; i < n; i++) {
+        // Crossover uniforme: cada gene é escolhido aleatoriamente dos pais
+        child.genotype[i] = rand.nextBoolean() ? parent1.genotype[i] : parent2.genotype[i];
+    }
+    return child;
+}
+
+// Mutação: inverte cada gene com probabilidade igual a mutationRate
+private void mutate(Individual ind, double mutationRate) {
+    Random rand = new Random();
+    for (int i = 0; i < ind.genotype.length; i++) {
+        if (rand.nextDouble() < mutationRate) {
+            ind.genotype[i] = !ind.genotype[i];
+        }
+    }
+}
+
+// Método para "reparar" um indivíduo, tentando ajustar a solução para que ela seja viável.
+// Por exemplo, se o total de itens for menor que waveSizeLB, ativa alguns pedidos aleatórios.
+private void repair(Individual ind) {
+    int total = 0;
+    for (int i = 0; i < ind.genotype.length; i++) {
+        if (ind.genotype[i]) {
+            total += getTotalItems(orders.get(i));
+        }
+    }
+    Random rand = new Random();
+    while (total < waveSizeLB) {
+        int idx = rand.nextInt(ind.genotype.length);
+        if (!ind.genotype[idx]) {
+            ind.genotype[idx] = true;
+            total += getTotalItems(orders.get(idx));
+        }
+    }
+}
+
+// Seleciona o melhor indivíduo (com maior fitness) da população
+private Individual selectBestIndividual(List<Individual> population) {
+    return population.stream().max(Comparator.comparingDouble(ind -> ind.fitness)).orElse(null);
+}
+
+// Seleciona o melhor indivíduo viável (fitness não negativo) da população
+private Individual selectBestFeasible(List<Individual> population) {
+    return population.stream().filter(ind -> ind.fitness >= 0).max(Comparator.comparingDouble(ind -> ind.fitness)).orElse(null);
+}
+
+// Método auxiliar para calcular o total de itens de um pedido
+private int getTotalItems(Map<Integer, Integer> order) {
+    return order.values().stream().mapToInt(Integer::intValue).sum();
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 
     /*
      * Get the remaining time in seconds
@@ -211,3 +342,29 @@ public class ChallengeSolver {
         return (double) totalUnitsPicked / numVisitedAisles;
     }
 }
+
+ /*
+    * Avalia a população em paralelo usando um ExecutorService com 8 threads.
+    * A função de avaliação computa a fitness de um indivíduo:
+    * Se a solução for viável, fitness = total_units / num_aisles;
+    * caso contrário, atribui um valor de fitness muito baixo (penaliza soluções inviáveis).
+    */
+    /* private void evaluatePopulation(List<Individual> population) {
+        ExecutorService executor = Executors.newFixedThreadPool(8);
+        List<Future<?>> futures = new ArrayList<>();
+        
+        for (Individual ind : population) {
+            futures.add(executor.submit(() -> {
+                ind.fitness = evaluateIndividual(ind);
+            }));
+        }
+        // Aguarda a conclusão de todas as tarefas
+        for (Future<?> f : futures) {
+            try {
+                f.get();
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
+        }
+        executor.shutdown();
+    } */
