@@ -1,6 +1,6 @@
 #!/bin/bash
-input_folder="datasets/a"
-output_folder="outputs"
+input_folder="datasets/b"
+output_folder="outputs/dataset_b"
 
 count_true=0
 count_false=0
