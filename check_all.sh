@@ -11,7 +11,7 @@ for input_file in "$input_folder"/*.txt; do
 
     echo "Verificando $instance_name..."
     
-    result=$(python checker.py "$input_file" "$output_file")
+    result=$(python3 checker.py "$input_file" "$output_file")
 
     is_feasible=$(echo "$result" | grep "Is solution feasible")
     objective_value=$(echo "$result" | grep "Objective function value")
